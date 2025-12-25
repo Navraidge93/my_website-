@@ -4,7 +4,7 @@ require('dotenv').config();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 class AIService {
-  static async generatePlanningsuggestion(userContext) {
+  static async generatePlanningSuggestion(userContext) {
     try {
       if (!OPENAI_API_KEY) {
         throw new Error('OpenAI API key not configured');

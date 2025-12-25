@@ -1,5 +1,7 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3001/api'
+  : '/api'; // Use relative path in production
 
 // Utility functions
 const getAuthToken = () => localStorage.getItem('auth_token');

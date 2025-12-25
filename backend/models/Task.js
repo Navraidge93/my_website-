@@ -101,23 +101,21 @@ class Task {
 
   static async updatePositions(tasks) {
     // tasks is an array of {id, position}
-    const client = await db.pool.connect();
+    // Use a transaction for atomic updates
     try {
-      await client.query('BEGIN');
+      await db.query('BEGIN');
       
       for (const task of tasks) {
-        await client.query(
+        await db.query(
           'UPDATE tasks SET position = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
           [task.position, task.id]
         );
       }
       
-      await client.query('COMMIT');
+      await db.query('COMMIT');
     } catch (error) {
-      await client.query('ROLLBACK');
+      await db.query('ROLLBACK');
       throw error;
-    } finally {
-      client.release();
     }
   }
 }

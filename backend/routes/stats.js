@@ -30,9 +30,9 @@ router.get('/dashboard', authenticate, async (req, res) => {
     // Get daily stats
     const statsResult = await db.query(
       `SELECT * FROM stats 
-       WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '${daysAgo} days'
+       WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '1 days' * $2
        ORDER BY date ASC`,
-      [req.user.id]
+      [req.user.id, daysAgo]
     );
 
     // Get summary
@@ -42,8 +42,8 @@ router.get('/dashboard', authenticate, async (req, res) => {
         SUM(completed_tasks) as completed_tasks,
         AVG(completion_rate) as avg_completion_rate
        FROM stats 
-       WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '${daysAgo} days'`,
-      [req.user.id]
+       WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '1 days' * $2`,
+      [req.user.id, daysAgo]
     );
 
     // Get points
@@ -99,10 +99,10 @@ router.get('/by-category', authenticate, async (req, res) => {
         COUNT(*) FILTER (WHERE completed = true) as completed,
         ROUND(COUNT(*) FILTER (WHERE completed = true)::numeric / COUNT(*)::numeric * 100, 2) as completion_rate
        FROM tasks 
-       WHERE planning_id = ANY($1) AND date >= CURRENT_DATE - INTERVAL '${daysAgo} days'
+       WHERE planning_id = ANY($1) AND date >= CURRENT_DATE - INTERVAL '1 days' * $2
        GROUP BY category
        ORDER BY total DESC`,
-      [planningIds]
+      [planningIds, daysAgo]
     );
 
     res.json({ categories: result.rows });
@@ -152,11 +152,11 @@ router.get('/by-hour', authenticate, async (req, res) => {
         COUNT(*) FILTER (WHERE completed = true) as completed
        FROM tasks 
        WHERE planning_id = ANY($1) 
-         AND date >= CURRENT_DATE - INTERVAL '${daysAgo} days'
+         AND date >= CURRENT_DATE - INTERVAL '1 days' * $2
          AND time IS NOT NULL
        GROUP BY hour
        ORDER BY hour`,
-      [planningIds]
+      [planningIds, daysAgo]
     );
 
     res.json({ hours: result.rows });
