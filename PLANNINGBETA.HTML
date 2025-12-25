@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning Commando</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        .slide-in { animation: slideIn 0.2s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col w-full sm:max-w-md mx-auto shadow-2xl overflow-hidden border-x border-slate-200">
+
+    <!-- HEADER -->
+    <header class="bg-slate-900 text-white p-4 pb-6 rounded-b-3xl shadow-lg z-10 shrink-0">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i data-lucide="brain" class="text-emerald-400"></i>
+                <span>Anti-Paralysie</span>
+            </h1>
+            <div class="text-xs font-mono bg-slate-800 px-2 py-1 rounded text-slate-400">
+                PROFIL: IFSI + BIZ
+            </div>
+        </div>
+
+        <!-- Date Nav -->
+        <div class="flex items-center justify-between bg-slate-800 rounded-xl p-2 mb-4">
+            <button onclick="changeDay(-1)" class="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Planning du</p>
+                <p id="date-display" class="font-bold text-lg capitalize">...</p>
+            </div>
+            <button onclick="changeDay(1)" class="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition">
+                <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Progress -->
+        <div class="px-1">
+            <div class="flex justify-between text-xs mb-1 text-emerald-300 font-semibold">
+                <span>Productivité du jour</span>
+                <span id="progress-text">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2.5">
+                <div id="progress-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- TABS -->
+    <div class="flex border-b border-slate-200 bg-white shrink-0">
+        <button onclick="switchTab('daily')" id="tab-daily" class="flex-1 py-3 text-sm font-semibold flex justify-center items-center gap-2 text-blue-600 border-b-2 border-blue-600 transition-colors">
+            <i data-lucide="clock" size="16"></i> Aujourd'hui
+        </button>
+        <button onclick="switchTab('global')" id="tab-global" class="flex-1 py-3 text-sm font-semibold flex justify-center items-center gap-2 text-slate-500 transition-colors">
+            <i data-lucide="calendar" size="16"></i> Deadlines
+        </button>
+        <button onclick="switchTab('brain')" id="tab-brain" class="flex-1 py-3 text-sm font-semibold flex justify-center items-center gap-2 text-slate-500 transition-colors">
+            <i data-lucide="alert-triangle" size="16"></i> Vrac
+        </button>
+    </div>
+
+    <!-- CONTENT -->
+    <main id="content-area" class="flex-1 overflow-y-auto bg-slate-50 p-4 pb-20 relative">
+        <!-- Dynamic Content Injected Here -->
+    </main>
+
+    <script>
+        // --- DATA & CONFIG ---
+        const SCHEDULE_TEMPLATES = {
+            vacation: [
+                { time: '07:30', title: 'Réveil + Hydratation + Anglais (15min)', category: 'perso', icon: 'sun' },
+                { time: '08:00', title: '🛑 BLOC IFSI : Rédiger UE 4.6', category: 'school', icon: 'book-open' },
+                { time: '10:00', title: 'Pause Café / Étirements', category: 'pause', icon: 'coffee' },
+                { time: '10:15', title: '🛑 BLOC IFSI : Suite UE 4.6 / Prépa Oral 5.3', category: 'school', icon: 'book-open' },
+                { time: '12:00', title: 'Déjeuner + Repos (Zéro écran ou Série)', category: 'pause', icon: 'coffee' },
+                { time: '13:30', title: '💸 BLOC BUSINESS : Achat/Revente ou Drop', category: 'business', icon: 'briefcase' },
+                { time: '15:30', title: 'Pause', category: 'pause', icon: 'coffee' },
+                { time: '15:45', title: '💸 BLOC BUSINESS : Suite', category: 'business', icon: 'briefcase' },
+                { time: '17:30', title: '🚗 Code de la route / Admin', category: 'perso', icon: 'car' },
+                { time: '18:30', title: '🏋️ SALLE DE SPORT (Vider la tête)', category: 'health', icon: 'dumbbell' },
+                { time: '20:30', title: 'Dîner + Douche', category: 'perso', icon: 'coffee' },
+                { time: '21:30', title: 'Lecture / Anglais Chill / Détente', category: 'perso', icon: 'moon' },
+            ],
+            stage: [
+                { time: '07:00', title: 'Stage (Trajet = Podcast Anglais)', category: 'school', icon: 'book-open' },
+                { time: '17:30', title: '🏋️ SALLE DE SPORT (Direct après stage)', category: 'health', icon: 'dumbbell' },
+                { time: '19:30', title: '⚡ HEURE DE PUISSANCE (Business ou IFSI)', category: 'mixed', icon: 'zap' },
+                { time: '20:30', title: 'Repas + Détente', category: 'perso', icon: 'moon' },
+            ],
+            driving_day: [
+                { time: '07:00', title: 'Réveil + Prépa Conduite', category: 'perso', icon: 'sun' },
+                { time: '08:00', title: '🚗 Heure de Conduite', category: 'perso', icon: 'car' },
+                { time: '10:00', title: '🛑 BLOC IFSI : Rattrapage UE 4.6', category: 'school', icon: 'book-open' },
+                { time: '12:00', title: 'Déjeuner', category: 'pause', icon: 'coffee' },
+                { time: '13:30', title: '💸 BLOC BUSINESS', category: 'business', icon: 'briefcase' },
+                { time: '18:30', title: '🏋️ SALLE DE SPORT', category: 'health', icon: 'dumbbell' },
+            ]
+        };
+
+        const DEADLINES = [
+            { date: '2025-12-29', title: '🚗 Heure de conduite (8h)', type: 'urgent' },
+            { date: '2026-01-05', title: '🏥 Reprise du Stage', type: 'info' },
+            { date: '2026-01-05', title: '📄 Récupérer feuille partiel école', type: 'todo' },
+            { date: '2026-01-07', title: '🚨 RENDU DOSSIER UE 4.6', type: 'critical' },
+            { date: '2026-01-12', title: '🎤 Début Oraux UE 5.3', type: 'urgent' },
+            { date: '2026-01-20', title: '📄 Rendre feuille partiel', type: 'todo' },
+        ];
+
+        // --- STATE ---
+        let currentDate = new Date('2025-12-25T08:00:00');
+        let activeTab = 'daily';
+        // Load from storage or default
+        let completedTasks = JSON.parse(localStorage.getItem('commando_tasks')) || {};
+        let brainDump = JSON.parse(localStorage.getItem('commando_brain')) || [];
+
+        // --- HELPERS ---
+        const getISODate = (d) => d.toISOString().split('T')[0];
+        const saveState = () => {
+            localStorage.setItem('commando_tasks', JSON.stringify(completedTasks));
+            localStorage.setItem('commando_brain', JSON.stringify(brainDump));
+            render();
+        };
+
+        // ensure state saved when leaving page (extra safety for mobile)
+        window.addEventListener('beforeunload', saveState);
+
+        const getSchedule = (date) => {
+            const dateStr = getISODate(date);
+            const day = date.getDay();
+            const normalized = new Date(dateStr + 'T00:00:00');
+            if (dateStr === '2025-12-29') return SCHEDULE_TEMPLATES.driving_day;
+            if (normalized >= new Date('2026-01-05T00:00:00')) {
+                if (day === 0 || day === 6) return SCHEDULE_TEMPLATES.vacation;
+                return SCHEDULE_TEMPLATES.stage;
+            }
+            return SCHEDULE_TEMPLATES.vacation;
+        };
+
+        const getCategoryClasses = (cat) => {
+            switch(cat) {
+                case 'school': return 'bg-red-100 text-red-800 border-red-200';
+                case 'business': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                case 'health': return 'bg-blue-100 text-blue-800 border-blue-200';
+                case 'pause': return 'bg-gray-100 text-gray-500 border-gray-200';
+                case 'mixed': return 'bg-purple-100 text-purple-800 border-purple-200';
+                default: return 'bg-slate-50 text-slate-700';
+            }
+        };
+
+        // --- ACTIONS ---
+        function changeDay(offset) {
+            currentDate.setDate(currentDate.getDate() + offset);
+            render();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            // Update Tab UI
+            ['daily', 'global', 'brain'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    btn.className = "flex-1 py-3 text-sm font-semibold flex justify-center items-center gap-2 text-blue-600 border-b-2 border-blue-600 transition-colors";
+                } else {
+                    btn.className = "flex-1 py-3 text-sm font-semibold flex justify-center items-center gap-2 text-slate-500 transition-colors";
+                }
+            });
+            renderContent();
+        }
+
+        function toggleTask(time) {
+            const key = `${getISODate(currentDate)}-${time}`;
+            if (completedTasks[key]) delete completedTasks[key];
+            else completedTasks[key] = true;
+            saveState();
+        }
+
+        function addBrainItem(e) {
+            e.preventDefault();
+            const input = document.getElementById('brain-input');
+            const val = input.value.trim();
+            if (!val) return;
+            brainDump.push({ id: Date.now(), text: val });
+            input.value = '';
+            saveState();
+        }
+
+        function deleteBrainItem(id) {
+            brainDump = brainDump.filter(i => i.id !== id);
+            saveState();
+        }
+
+        // --- RENDERERS ---
+        function renderHeader() {
+            // Date
+            const dateOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('date-display').textContent = currentDate.toLocaleDateString('fr-FR', dateOptions);
+
+            // Progress
+            const schedule = getSchedule(currentDate);
+            const keyPrefix = getISODate(currentDate);
+            const total = schedule.length;
+            const done = schedule.filter(s => completedTasks[`${keyPrefix}-${s.time}`]).length;
+            const pct = Math.round((done / total) * 100) || 0;
+
+            document.getElementById('progress-text').textContent = `${pct}%`;
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+        }
+
+        function renderContent() {
+            const container = document.getElementById('content-area');
+            container.innerHTML = '';
+            
+            if (activeTab === 'daily') renderDaily(container);
+            else if (activeTab === 'global') renderGlobal(container);
+            else if (activeTab === 'brain') renderBrain(container);
+
+            lucide.createIcons();
+        }
+
+        function renderDaily(container) {
+            const schedule = getSchedule(currentDate);
+            const dateStr = getISODate(currentDate);
+
+            // Alert for UE 4.6
+            if (new Date(getISODate(currentDate) + 'T00:00:00') < new Date('2026-01-07T00:00:00')) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-3 mb-4 animate-pulse';
+                alertDiv.innerHTML = `
+                    <i data-lucide="alert-triangle" class="text-red-500 shrink-0 mt-0.5" size="18"></i>
+                    <div>
+                        <h3 class="text-red-800 text-sm font-bold">Focus Prioritaire : UE 4.6</h3>
+                        <p class="text-red-600 text-xs">Dossier à rendre le 07/01. Ne fais RIEN d'autre le matin.</p>
+                    </div>
+                `;
+                container.appendChild(alertDiv);
+            }
+
+            const list = document.createElement('div');
+            list.className = 'space-y-3 slide-in';
+
+            schedule.forEach(slot => {
+                const isDone = completedTasks[`${dateStr}-${slot.time}`];
+                const colorClass = getCategoryClasses(slot.category);
+                const item = document.createElement('div');
+                item.onclick = () => toggleTask(slot.time);
+                item.className = `relative flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${isDone ? 'opacity-50 grayscale bg-gray-50 border-gray-100' : `${colorClass} shadow-sm hover:shadow-md hover:scale-[1.01]`}`;
+                
+                item.innerHTML = `
+                    <div class="font-mono text-sm font-bold opacity-70 w-12 shrink-0">${slot.time}</div>
+                    <div class="p-2 rounded-full bg-white/50 backdrop-blur-sm shrink-0 flex items-center justify-center">
+                        ${isDone ? '<i data-lucide="check-circle" class="text-emerald-600" size="18"></i>' : `<i data-lucide="${slot.icon}" size="18"></i>`}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold ${isDone ? 'line-through' : ''}">${slot.title}</p>
+                        <p class="text-[10px] uppercase tracking-wider opacity-60 font-bold">${slot.category === 'school' ? 'OBLIGATION' : slot.category}</p>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+            list.innerHTML += '<div class="h-8"></div>'; // Spacer
+            container.appendChild(list);
+        }
+
+        function renderGlobal(container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'space-y-4 slide-in';
+            wrapper.innerHTML = `<h2 class="font-bold text-slate-700 text-lg">La Guerre des Dates</h2>`;
+            
+            const list = document.createElement('div');
+            list.className = 'space-y-2';
+            
+            DEADLINES.forEach(dl => {
+                const borderClass = dl.type === 'critical' ? 'border-red-500' : dl.type === 'urgent' ? 'border-orange-400' : 'border-blue-400';
+                const badgeClass = dl.type === 'critical' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600';
+                
+                const item = document.createElement('div');
+                item.className = `p-4 rounded-xl border-l-4 bg-white shadow-sm flex flex-col ${borderClass}`;
+                const dateFmt = new Date(dl.date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'});
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-slate-800">${dl.title}</span>
+                        <span class="text-xs px-2 py-1 rounded font-bold ${badgeClass}">${dateFmt}</span>
+                    </div>
+                    ${dl.type === 'critical' ? '<p class="text-xs text-red-500 mt-1">⚠️ Priorité absolue.</p>' : ''}
+                `;
+                list.appendChild(item);
+            });
+            wrapper.appendChild(list);
+            container.appendChild(wrapper);
+        }
+
+        function renderBrain(container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'space-y-4 slide-in';
+            
+            wrapper.innerHTML = `
+                <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                    <h3 class="font-bold text-indigo-900 mb-1">Zone de décharge</h3>
+                    <p class="text-xs text-indigo-700">Tu as une idée ? Une peur ? Écris-la ici. Ne te laisse pas distraire.</p>
+                </div>
+            `;
+
+            // Form
+            const form = document.createElement('form');
+            form.className = 'flex gap-2';
+            form.onsubmit = addBrainItem;
+            form.innerHTML = `
+                <input type="text" id="brain-input" placeholder="Vider mon cerveau..." class="flex-1 p-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition">
+                    <i data-lucide="plus" size="20"></i>
+                </button>
+            `;
+            wrapper.appendChild(form);
+
+            // List
+            const list = document.createElement('ul');
+            list.className = 'space-y-2';
+            
+            if (brainDump.length === 0) {
+                list.innerHTML = '<div class="text-center text-slate-400 py-8 text-sm italic">Ton esprit est clair.</div>';
+            } else {
+                brainDump.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm';
+                    li.innerHTML = `
+                        <span class="text-sm text-slate-700">${item.text}</span>
+                    `;
+                    const btn = document.createElement('button');
+                    btn.className = 'text-slate-400 hover:text-red-500 transition p-1';
+                    btn.onclick = () => deleteBrainItem(item.id);
+                    btn.innerHTML = '<i data-lucide="trash-2" size="16"></i>';
+                    li.appendChild(btn);
+                    list.appendChild(li);
+                });
+            }
+            wrapper.appendChild(list);
+            container.appendChild(wrapper);
+        }
+
+        function render() {
+            renderHeader();
+            renderContent();
+        }
+
+        // Init
+        render();
+    </script>
+</body>
+</html>
