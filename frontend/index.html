@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning Platform - Welcome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen flex items-center justify-center p-4">
+    
+    <div class="w-full max-w-md">
+        <!-- Logo & Title -->
+        <div class="text-center mb-8">
+            <div class="inline-block p-4 bg-emerald-500 rounded-2xl mb-4 animate-bounce-slow">
+                <i data-lucide="brain" class="text-white" size="48"></i>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-2">Planning Platform</h1>
+            <p class="text-slate-300">Transform your productivity with AI-powered planning</p>
+        </div>
+
+        <!-- Auth Container -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-200 mb-6">
+                <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent transition-colors">
+                    Login
+                </button>
+                <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition-colors">
+                    Sign Up
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="hidden space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                    <input type="email" id="login-email" required
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                    <input type="password" id="login-password" required
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="login-error" class="text-red-600 text-sm hidden"></div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                    Login
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Username</label>
+                    <input type="text" id="register-username" required
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                    <input type="email" id="register-email" required
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                    <input type="password" id="register-password" required
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-slate-500 mt-1">At least 6 characters</p>
+                </div>
+                <div id="register-error" class="text-red-600 text-sm hidden"></div>
+                <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition-colors">
+                    Create Account
+                </button>
+            </form>
+
+            <!-- Features -->
+            <div class="mt-8 pt-6 border-t border-slate-200">
+                <p class="text-xs text-slate-500 text-center mb-3">What you'll get:</p>
+                <div class="space-y-2 text-sm text-slate-600">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="text-emerald-500" size="16"></i>
+                        <span>AI-powered planning suggestions</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="text-emerald-500" size="16"></i>
+                        <span>Advanced productivity statistics</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="text-emerald-500" size="16"></i>
+                        <span>Social features & community</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="text-emerald-500" size="16"></i>
+                        <span>Gamification & achievements</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        lucide.createIcons();
+
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const loginTab = document.getElementById('tab-login');
+            const registerTab = document.getElementById('tab-register');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                loginTab.className = 'flex-1 py-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition-colors';
+                registerTab.className = 'flex-1 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent transition-colors';
+            } else {
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                registerTab.className = 'flex-1 py-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition-colors';
+                loginTab.className = 'flex-1 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent transition-colors';
+            }
+        }
+
+        // Check if already logged in
+        if (localStorage.getItem('auth_token')) {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+</html>

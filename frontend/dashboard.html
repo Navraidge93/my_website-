@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Planning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-50 min-h-screen">
+    
+    <!-- Header -->
+    <header class="bg-slate-900 text-white p-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <i data-lucide="brain" class="text-emerald-400"></i>
+                <h1 class="text-xl font-bold">Planning Platform</h1>
+            </div>
+            
+            <nav class="hidden md:flex items-center gap-6">
+                <a href="dashboard.html" class="hover:text-emerald-400 transition">Dashboard</a>
+                <a href="discover.html" class="hover:text-emerald-400 transition">Discover</a>
+                <a href="stats.html" class="hover:text-emerald-400 transition">Statistics</a>
+                <a href="profile.html" class="hover:text-emerald-400 transition">Profile</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <button onclick="Auth.logout()" class="hover:text-red-400 transition">
+                    <i data-lucide="log-out" size="20"></i>
+                </button>
+                <img id="user-avatar" src="https://ui-avatars.com/api/?name=User" 
+                     class="w-10 h-10 rounded-full border-2 border-emerald-400">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-slate-900 mb-2">Welcome back, <span id="user-name">User</span>!</h2>
+            <p class="text-slate-600">Here's your productivity overview for today</p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-600 text-sm">Tasks Today</span>
+                    <i data-lucide="list-todo" class="text-blue-500" size="20"></i>
+                </div>
+                <p class="text-3xl font-bold text-slate-900" id="stat-tasks-today">0</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-600 text-sm">Completion Rate</span>
+                    <i data-lucide="trending-up" class="text-emerald-500" size="20"></i>
+                </div>
+                <p class="text-3xl font-bold text-slate-900"><span id="stat-completion-rate">0</span>%</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-600 text-sm">Current Streak</span>
+                    <i data-lucide="flame" class="text-orange-500" size="20"></i>
+                </div>
+                <p class="text-3xl font-bold text-slate-900"><span id="stat-streak">0</span> days</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-600 text-sm">Level</span>
+                    <i data-lucide="award" class="text-purple-500" size="20"></i>
+                </div>
+                <p class="text-3xl font-bold text-slate-900" id="stat-level">1</p>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Today's Planning -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-900">Today's Planning</h3>
+                        <div class="flex gap-2">
+                            <button onclick="openAIAssistant()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2">
+                                <i data-lucide="sparkles" size="16"></i>
+                                AI Assistant
+                            </button>
+                            <button onclick="openNewTaskModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                <i data-lucide="plus" size="16"></i>
+                                New Task
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-6">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-slate-600">Today's Progress</span>
+                            <span class="font-semibold text-emerald-600" id="progress-text">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div id="progress-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tasks List -->
+                    <div id="tasks-container" class="space-y-3">
+                        <!-- Tasks will be loaded here -->
+                        <div class="text-center py-12 text-slate-400">
+                            <i data-lucide="inbox" size="48" class="mx-auto mb-4 opacity-50"></i>
+                            <p>No tasks for today. Create one to get started!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                
+                <!-- Motivational Message -->
+                <div class="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-6 text-white shadow-lg">
+                    <div class="flex items-start gap-3 mb-3">
+                        <i data-lucide="lightbulb" size="24"></i>
+                        <h4 class="font-bold text-lg">Daily Motivation</h4>
+                    </div>
+                    <p id="motivation-text" class="text-sm opacity-90">Loading...</p>
+                </div>
+
+                <!-- Recent Achievements -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h4 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="trophy" size="20" class="text-yellow-500"></i>
+                        Recent Achievements
+                    </h4>
+                    <div id="achievements-container" class="space-y-3">
+                        <!-- Achievements will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h4 class="font-bold text-slate-900 mb-4">Quick Actions</h4>
+                    <div class="space-y-2">
+                        <button onclick="location.href='stats.html'" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-50 transition flex items-center gap-3">
+                            <i data-lucide="bar-chart-3" size="18" class="text-blue-500"></i>
+                            <span class="text-sm font-medium">View Statistics</span>
+                        </button>
+                        <button onclick="location.href='discover.html'" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-50 transition flex items-center gap-3">
+                            <i data-lucide="compass" size="18" class="text-emerald-500"></i>
+                            <span class="text-sm font-medium">Discover Plannings</span>
+                        </button>
+                        <button onclick="location.href='profile.html'" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-50 transition flex items-center gap-3">
+                            <i data-lucide="user" size="18" class="text-purple-500"></i>
+                            <span class="text-sm font-medium">Edit Profile</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/planning.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // Initialize
+        if (Auth.requireAuth()) {
+            Auth.initUser();
+            loadDashboard();
+        }
+
+        async function loadDashboard() {
+            try {
+                // Load stats
+                const statsData = await Utils.apiRequest('/stats/dashboard?period=7');
+                updateStats(statsData.summary);
+
+                // Load motivation
+                const motivationData = await Utils.apiRequest('/ai/motivation');
+                document.getElementById('motivation-text').textContent = motivationData.message;
+
+                // Load tasks for today (placeholder - would need planning implementation)
+                // const tasks = await loadTodayTasks();
+                // renderTasks(tasks);
+
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        function updateStats(summary) {
+            document.getElementById('stat-tasks-today').textContent = summary.totalTasks || 0;
+            document.getElementById('stat-completion-rate').textContent = summary.completionRate || 0;
+            document.getElementById('stat-streak').textContent = summary.currentStreak || 0;
+            document.getElementById('stat-level').textContent = summary.level || 1;
+            
+            const progress = summary.completionRate || 0;
+            document.getElementById('progress-text').textContent = `${progress}%`;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+        }
+
+        function openAIAssistant() {
+            Utils.showToast('AI Assistant feature coming soon!', 'warning');
+        }
+
+        function openNewTaskModal() {
+            Utils.showToast('Task creation modal coming soon!', 'warning');
+        }
+    </script>
+</body>
+</html>
