@@ -1,11 +1,12 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Parse l'URL de connexion
+const connectionString = process.env.DATABASE_URL;
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false
+  connectionString: connectionString,
+  ssl: false  // Désactivation complète de SSL
 });
 
 pool.on('connect', () => {
