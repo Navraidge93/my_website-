@@ -8,15 +8,14 @@ const app = express();
 const pool = require('./config/database');
 
 // --- FIX RAILWAY (CRUCIAL) ---
-// Permet à Railway de gérer correctement les requêtes sécurisées
 app.set('trust proxy', 1);
 
-// --- INITIALISATION BDD AUTOMATIQUE ---
+// --- INITIALISATION BDD ---
 async function initDatabase() {
   try {
-    console.log('🔧 Vérification des tables...');
+    console.log('🔧 Mise à jour de la base de données...');
     
-    // 1. Table Utilisateurs
+    // 1. Utilisateurs
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -26,7 +25,7 @@ async function initDatabase() {
       );
     `);
     
-    // 2. Table Tâches (Spéciale pour Planning OS V9)
+    // 2. Tâches
     await pool.query(`
       CREATE TABLE IF NOT EXISTS tasks (
         id SERIAL PRIMARY KEY,
@@ -38,41 +37,64 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // 3. Amis (NOUVEAU - Module Social)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS friends (
+        id SERIAL PRIMARY KEY,
+        user_id_1 INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user_id_2 INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'accepted',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 4. Messages (NOUVEAU - Module Chat)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        sender_name VARCHAR(255),
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
     
-    console.log('✅ Base de données prête (Users + Tasks)');
+    console.log('✅ Base de données V3 prête (Users, Tasks, Friends, Messages)');
   } catch (error) {
     console.error('❌ Erreur Init DB:', error);
   }
 }
 
-// On lance l'initialisation au démarrage
 initDatabase();
 
 const PORT = process.env.PORT || 3001;
 
-// --- CONFIGURATION ---
+// --- MIDDLEWARE ---
 app.use(helmet());
-app.use(cors({ origin: '*' })); // Autorise tout le monde (Vercel)
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(morgan('dev'));
 
-// --- IMPORT DES ROUTES ---
-// (Assure-toi que ces fichiers existent ou crée-les vides pour l'instant)
+// --- ROUTES ---
+// On importe tes modules (Assure-toi que ces fichiers existent !)
 const authRoutes = require('./routes/auth');
 const tasksRoutes = require('./routes/tasks');
+const socialRoutes = require('./routes/social'); // Le nouveau fichier pour les amis
 
-// Route de Test (Ping)
+// Test de vie
 app.get('/api/hello', (req, res) => {
-    res.json({ status: 'online', message: 'Backend V9 Connecté 🚀' });
+    res.json({ status: 'online', message: 'Backend V3 (Social) Opérationnel 🚀' });
 });
 
 // Branchement des routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', tasksRoutes);
+app.use('/api/social', socialRoutes);
 
 // Gestion 404
 app.use((req, res) => res.status(404).json({ error: 'Route introuvable' }));
 
 app.listen(PORT, () => {
-  console.log(`🚀 Serveur lancé sur le port ${PORT}`);
+  console.log(`🚀 Serveur V3 lancé sur le port ${PORT}`);
 });
