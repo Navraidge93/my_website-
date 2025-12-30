@@ -1,134 +1,42 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-const { generateToken } = require('../config/auth');
-const { authenticate } = require('../middleware/auth');
-const { validate, validationRules } = require('../middleware/validation');
+const router = require('express').Router();
+const pool = require('../config/database');
 
-// Register
-router.post('/register', validate(validationRules.register), async (req, res) => {
+// ROUTE: Connexion / Inscription (Mode Simplifié)
+// Cette route est appelée quand tu cliques sur "Envoyer le code" ou "Valider"
+router.post('/login', async (req, res) => {
+  const { email } = req.body;
+
+  // Sécurité de base
+  if (!email) return res.status(400).json({ error: "Email requis" });
+
   try {
-    const { username, email, password } = req.body;
+    // 1. Est-ce que cet email existe déjà dans ta base de données ?
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-    // Check if user already exists
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email already registered' });
+    let user;
+
+    if (userCheck.rows.length > 0) {
+      // OUI -> C'est un ancien, on le connecte
+      user = userCheck.rows[0];
+    } else {
+      // NON -> C'est un nouveau, on le crée (Inscription automatique)
+      const name = email.split('@')[0]; // On prend le début de l'email comme pseudo (ex: "nathan")
+      
+      const newUser = await pool.query(
+        'INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *',
+        [email, name]
+      );
+      user = newUser.rows[0];
     }
 
-    const existingUsername = await User.findByUsername(username);
-    if (existingUsername) {
-      return res.status(400).json({ error: 'Username already taken' });
-    }
+    // 2. On renvoie les infos de l'utilisateur au site (Frontend)
+    // Le site va utiliser l'ID reçu pour charger LES BONNES TÂCHES
+    res.json({ success: true, user });
 
-    // Create user
-    const user = await User.create({ username, email, password });
-
-    // Generate token
-    const token = generateToken(user.id);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        bio: user.bio
-      }
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+  } catch (err) {
+    console.error("Erreur Auth:", err);
+    res.status(500).json({ error: "Erreur serveur lors de la connexion" });
   }
-});
-
-// Login
-router.post('/login', validate(validationRules.login), async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Find user
-    const user = await User.findByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Verify password
-    const isValid = await User.verifyPassword(user, password);
-    if (!isValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Update last login
-    await User.updateLastLogin(user.id);
-
-    // Generate token
-    const token = generateToken(user.id);
-
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        bio: user.bio,
-        settings: user.settings
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-// Get current user
-router.get('/me', authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    const stats = await User.getStats(req.user.id);
-
-    res.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        bio: user.bio,
-        settings: user.settings,
-        created_at: user.created_at
-      },
-      stats
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ error: 'Failed to fetch user data' });
-  }
-});
-
-// Update profile
-router.put('/profile', authenticate, async (req, res) => {
-  try {
-    const { avatar, bio, settings } = req.body;
-
-    const updatedUser = await User.updateProfile(req.user.id, { avatar, bio, settings });
-
-    res.json({
-      message: 'Profile updated successfully',
-      user: updatedUser
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
-});
-
-// Logout (client-side token removal, but we can track it)
-router.post('/logout', authenticate, async (req, res) => {
-  res.json({ message: 'Logout successful' });
 });
 
 module.exports = router;
