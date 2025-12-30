@@ -1,86 +1,122 @@
 const router = require('express').Router();
 const pool = require('../config/database');
 
-// --- GESTION DES AMIS ---
+// --- AMIS ---
 
-// 1. Ajouter un ami par email
-// POST /api/social/friends/add
-router.post('/friends/add', async (req, res) => {
+// 1. Envoyer une demande d'ami (avec notif)
+router.post('/friends/request', async (req, res) => {
   const { userId, friendEmail } = req.body;
 
   try {
-    // Trouver l'ID de l'ami
     const friendCheck = await pool.query('SELECT * FROM users WHERE email = $1', [friendEmail]);
-    
-    if (friendCheck.rows.length === 0) {
-      return res.status(404).json({ error: "Utilisateur introuvable avec cet email." });
-    }
+    if (friendCheck.rows.length === 0) return res.status(404).json({ error: "Utilisateur introuvable." });
 
     const friendId = friendCheck.rows[0].id;
+    if (friendId == userId) return res.status(400).json({ error: "Impossible de s'ajouter soi-même." });
 
-    if (friendId == userId) {
-      return res.status(400).json({ error: "Tu ne peux pas t'ajouter toi-même !" });
-    }
-
-    // Créer le lien d'amitié
-    await pool.query(
-      'INSERT INTO friends (user_id_1, user_id_2) VALUES ($1, $2)',
-      [userId, friendId]
+    // Vérifier si lien existe déjà (dans un sens ou l'autre)
+    const linkCheck = await pool.query(
+        'SELECT * FROM friends WHERE (user_id_1 = $1 AND user_id_2 = $2) OR (user_id_1 = $2 AND user_id_2 = $1)',
+        [userId, friendId]
     );
 
-    res.json({ success: true, message: "Ami ajouté !" });
+    if (linkCheck.rows.length > 0) return res.status(400).json({ error: "Demande déjà envoyée ou vous êtes déjà amis." });
 
+    // Créer la demande
+    await pool.query('INSERT INTO friends (user_id_1, user_id_2, status) VALUES ($1, $2, $3)', [userId, friendId, 'pending']);
+
+    // Créer la notification pour l'ami
+    await pool.query(
+        'INSERT INTO notifications (user_id, type, content, from_user_id) VALUES ($1, $2, $3, $4)',
+        [friendId, 'friend_request', 'veut être ton ami', userId]
+    );
+
+    res.json({ success: true, message: "Demande envoyée !" });
   } catch (err) {
-    res.status(500).json({ error: "Erreur ou ami déjà ajouté." });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 2. Voir mes amis
-// GET /api/social/friends?userId=123
+// 2. Accepter une demande d'ami
+router.post('/friends/accept', async (req, res) => {
+    const { userId, friendId } = req.body; // userId = celui qui accepte
+    try {
+        await pool.query(
+            'UPDATE friends SET status = $1 WHERE user_id_1 = $2 AND user_id_2 = $3',
+            ['accepted', friendId, userId]
+        );
+        
+        // Notif retour
+        await pool.query(
+            'INSERT INTO notifications (user_id, type, content, from_user_id) VALUES ($1, $2, $3, $4)',
+            [friendId, 'friend_accept', 'a accepté ta demande', userId]
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. Liste des amis (seulement ceux acceptés)
 router.get('/friends', async (req, res) => {
   const { userId } = req.query;
   try {
-    // On cherche les amis où je suis soit user_1 soit user_2
     const result = await pool.query(`
-      SELECT u.id, u.name, u.email 
+      SELECT u.id, u.name, u.email, u.last_active
       FROM users u
       JOIN friends f ON (u.id = f.user_id_1 OR u.id = f.user_id_2)
-      WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1) AND u.id != $1
+      WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1) 
+      AND f.status = 'accepted'
+      AND u.id != $1
     `, [userId]);
-    
     res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- GESTION DU CHAT (Global pour l'instant) ---
+// --- NOTIFICATIONS ---
 
-// 3. Envoyer un message
-// POST /api/social/messages
+// 4. Récupérer mes notifications
+router.get('/notifications', async (req, res) => {
+    const { userId } = req.query;
+    try {
+        const result = await pool.query(`
+            SELECT n.*, u.name as from_name 
+            FROM notifications n
+            JOIN users u ON n.from_user_id = u.id
+            WHERE n.user_id = $1 
+            ORDER BY n.created_at DESC
+        `, [userId]);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- CHAT PRIVÉ ---
+
+// 5. Envoyer un message privé
 router.post('/messages', async (req, res) => {
-  const { senderId, senderName, content } = req.body;
+  const { senderId, receiverId, content } = req.body;
   try {
     const newMessage = await pool.query(
-      'INSERT INTO messages (sender_id, sender_name, content) VALUES ($1, $2, $3) RETURNING *',
-      [senderId, senderName, content]
+      'INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1, $2, $3) RETURNING *',
+      [senderId, receiverId, content]
     );
     res.json(newMessage.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 4. Lire les messages
-// GET /api/social/messages
+// 6. Lire la conversation avec un ami
 router.get('/messages', async (req, res) => {
-  try {
-    // On récupère les 50 derniers messages
-    const result = await pool.query('SELECT * FROM messages ORDER BY created_at ASC LIMIT 50');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const { userId, friendId } = req.query;
+    try {
+        const result = await pool.query(`
+            SELECT * FROM messages 
+            WHERE (sender_id = $1 AND receiver_id = $2) 
+               OR (sender_id = $2 AND receiver_id = $1)
+            ORDER BY created_at ASC
+        `, [userId, friendId]);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;
