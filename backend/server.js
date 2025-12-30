@@ -8,6 +8,11 @@ require('dotenv').config();
 const app = express();
 const pool = require('./config/database');
 
+// --- FIX RAILWAY (CRUCIAL POUR LES LOGS) ---
+// Railway utilise un proxy. Sans ça, rateLimit plante (erreur X-Forwarded-For).
+app.set('trust proxy', 1); 
+// -------------------------------------------
+
 // Initialize database on startup
 async function initDatabase() {
   try {
