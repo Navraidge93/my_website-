@@ -43,6 +43,7 @@ async function initDatabase() {
 
 initDatabase();
 
+// Railway fournit le port via process.env.PORT, sinon 3001
 const PORT = process.env.PORT || 3001;
 
 // Import routes
@@ -56,7 +57,7 @@ const statsRoutes = require('./routes/stats');
 // Middleware
 app.use(helmet()); // Security headers
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || '*', // Mis à * pour faciliter le test, à restreindre plus tard
   credentials: true
 }));
 app.use(express.json());
@@ -71,6 +72,18 @@ const limiter = rateLimit({
 });
 
 app.use('/api/', limiter);
+
+// --- ZONES DES ROUTES DE TEST (AJOUTÉ ICI) ---
+// C'est cette route qui manquait pour ton test React
+app.get('/api/hello', (req, res) => {
+    console.log("Test de connexion reçu sur /api/hello");
+    res.json({
+        message: "Coucou depuis le backend complet ! 🎉",
+        heure: new Date().toLocaleTimeString(),
+        status: "success"
+    });
+});
+// ---------------------------------------------
 
 // Health check
 app.get('/health', (req, res) => {
