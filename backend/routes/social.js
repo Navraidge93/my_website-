@@ -2,6 +2,8 @@ const router = require('express').Router();
 const pool = require('../config/database');
 
 // --- AMIS ---
+
+// 1. Envoyer une demande
 router.post('/friends/request', async (req, res) => {
   const { userId, friendEmail } = req.body;
 
@@ -29,9 +31,31 @@ router.post('/friends/request', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 2. Accepter une demande (C'ÉTAIT ÇA QUI MANQUAIT !)
+router.post('/friends/accept', async (req, res) => {
+    const { userId, friendId } = req.body; // userId est celui qui accepte
+    try {
+        // On valide l'amitié dans les deux sens
+        await pool.query(
+            'UPDATE pl_friends SET status = $1 WHERE (user_id_1 = $2 AND user_id_2 = $3) OR (user_id_1 = $3 AND user_id_2 = $2)',
+            ['accepted', friendId, userId]
+        );
+        
+        // On notifie l'autre personne que c'est bon
+        await pool.query(
+            'INSERT INTO pl_notifications (user_id, type, content, from_user_id) VALUES ($1, $2, $3, $4)',
+            [friendId, 'friend_accept', 'a accepté ta demande !', userId]
+        );
+
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. Voir la liste des amis (Uniquement ceux acceptés)
 router.get('/friends', async (req, res) => {
   const { userId } = req.query;
   try {
+    // La requête vérifie l'activité récente pour le statut en ligne (5 min)
     const result = await pool.query(`
       SELECT u.id, u.name, u.email, 
       CASE WHEN u.last_active > NOW() - INTERVAL '5 minutes' THEN 'online' ELSE 'offline' END as status
